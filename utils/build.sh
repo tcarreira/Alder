@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Builds straight from the read-only source in /src. Gradle's writes (build/, .gradle/, .kotlin/) go to /utils/cache
-# instead and the APKs are copied to /utils/output: /utils is the host's utils folder, written as the host user.
+# Builds straight from the source in /src. Gradle 9 needs that folder writable, but its writes (build/, .gradle/,
+# .kotlin/, the problems report) are sent to /utils/cache or turned off, so the repository stays as it is. The APKs are
+# copied to /utils/output. /utils is the host's utils folder, written as the host user.
 set -euo pipefail
 
 TASK="${GRADLE_TASK:-assembleDebug}"
@@ -59,6 +60,7 @@ cd /src
 sh ./gradlew --no-daemon \
     --init-script /usr/local/share/docker.init.gradle.kts \
     --project-cache-dir "$CACHE/project" \
+    --no-problems-report \
     -Pkotlin.project.persistent.dir="$CACHE/kotlin" \
     "${signing[@]}" \
     "${tasks[@]}"

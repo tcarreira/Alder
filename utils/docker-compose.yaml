@@ -12,7 +12,9 @@ services:
         CMDLINE_TOOLS_VERSION: ${CMDLINE_TOOLS_VERSION:-13114758}
     image: alder-apk-builder
     volumes:
-      - ..:/src:ro    # the repository, read-only
+      # The repository. Writable only because Gradle 9 refuses a project folder it can't write to: the build sends
+      # its writes to utils/cache instead (build.sh).
+      - ..:/src
       # utils itself rather than output/ and cache/: Docker would create those as root if missing, and the build
       # user couldn't write to them. Inside it, the build makes:
       #   output/        the APKs

@@ -4,7 +4,7 @@ val appId = System.getenv("APP_ID").orEmpty()
 val appNameRes = System.getenv("APP_NAME_RES").orEmpty()
 
 allprojects {
-    // Keeps every project's build/ out of the source tree, which is mounted read-only at /src.
+    // Keeps every project's build/ out of the source tree, mounted at /src.
     layout.buildDirectory.set(file("/utils/cache/build/$name"))
 
     // Changed in finalizeDsl: after build.gradle.kts has set its own values, before the Android plugin locks them. The

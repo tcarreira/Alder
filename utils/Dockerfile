@@ -1,5 +1,5 @@
 # Android build environment for Alder: JDK 17 (as in CI) plus the Android SDK. The source isn't baked in; it's
-# mounted read-only at /src when the container runs, and build.sh puts the APKs in /utils/output.
+# mounted at /src when the container runs, and build.sh puts the APKs in /utils/output.
 FROM eclipse-temurin:17-jdk-jammy
 
 ARG CMDLINE_TOOLS_VERSION=13114758
