@@ -17,7 +17,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends unzip wget \
     && rm -rf /var/lib/apt/lists/*
 
-COPY build-dirs.init.gradle.kts /usr/local/share/
+COPY docker.init.gradle.kts /usr/local/share/
 COPY build.sh /usr/local/bin/build-apk
 RUN chmod +x /usr/local/bin/build-apk
 

@@ -26,7 +26,7 @@ fi
 KEYSTORE="${SIGNING_KEYSTORE:-/utils/keys/release.jks}"
 signing=()
 if [[ "$TASK" == *Release* && -f "$KEYSTORE" ]]; then
-    : "${SIGNING_STORE_PASSWORD:?$KEYSTORE is there but SIGNING_STORE_PASSWORD is not set (utils/keys/signing.env)}"
+    : "${SIGNING_STORE_PASSWORD:?$KEYSTORE is there but SIGNING_STORE_PASSWORD is not set (utils/.env)}"
     signing=(
         -Pandroid.injected.signing.store.file="$KEYSTORE"
         -Pandroid.injected.signing.store.password="$SIGNING_STORE_PASSWORD"
@@ -38,9 +38,26 @@ elif [[ "$TASK" == *Release* ]]; then
     echo "No $KEYSTORE: signing with the debug key"
 fi
 
+echo "Application ID: ${APP_ID:-dev.alder (build.gradle.kts)}"
+
+# APP_NAME: the name on the TV's home screen and app list, in a res folder of its own (docker.init.gradle.kts adds it).
+name_res="$CACHE/app-name/res"
+rm -rf "$CACHE/app-name"
+if [ -n "${APP_NAME:-}" ]; then
+    # Android string resources: XML escapes, then backslash, quotes, and a leading @ or ? escaped with a backslash.
+    name="${APP_NAME//&/\&amp;}"; name="${name//</\&lt;}"; name="${name//>/\&gt;}"
+    name="${name//\\/\\\\}"; name="${name//\'/\\\'}"; name="${name//\"/\\\"}"
+    [[ "$name" == [@?]* ]] && name="\\$name"
+    mkdir -p "$name_res/values"
+    printf '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <string name="app_name" translatable="false">%s</string>\n</resources>\n' \
+        "$name" > "$name_res/values/strings.xml"
+    export APP_NAME_RES="$name_res"
+    echo "App name: $APP_NAME"
+fi
+
 cd /src
 sh ./gradlew --no-daemon \
-    --init-script /usr/local/share/build-dirs.init.gradle.kts \
+    --init-script /usr/local/share/docker.init.gradle.kts \
     --project-cache-dir "$CACHE/project" \
     -Pkotlin.project.persistent.dir="$CACHE/kotlin" \
     "${signing[@]}" \

@@ -1,13 +1,12 @@
 # Building the APK with Docker
 
-Everything here runs from the repository root. Nothing needs to be installed on the host but Docker (Compose v2.24
-or later, for the optional `env_file`).
+Everything here runs from the repository root. Nothing needs to be installed on the host but Docker with Compose v2.
 
 | Folder in `utils/` | What it holds | In git |
 |---|---|---|
 | `output/` | the built APKs | no |
 | `cache/` | Gradle, dependencies, build output, the debug key. Delete it to start clean (~1–2 GB) | no |
-| `keys/` | your release key and its passwords (optional) | no |
+| `keys/` | your release key (optional) | no |
 
 The container runs as UID:GID 1000:1000. If `id -u` / `id -g` say otherwise, put
 `HOST_UID=$(id -u) HOST_GID=$(id -g)` in front of the commands below and add `--build` once.
@@ -33,8 +32,39 @@ GRADLE_TASK=assembleRelease docker compose -f utils/docker-compose.yaml run --rm
 - otherwise the debug key. Gradle warns `keystore.properties not found`, and the build logs
   `No /utils/keys/release.jks: signing with the debug key`. That APK installs fine, and installs over a debug build.
 
-`GRADLE_TASK` takes any Gradle tasks, space-separated: `GRADLE_TASK="testDebugUnitTest assembleRelease"` runs the
-unit tests first, as CI does.
+## Overrides
+
+Set in front of the command, e.g. `APP_NAME="Alder (Docker)" GRADLE_TASK=assembleRelease docker compose -f
+utils/docker-compose.yaml run --rm apk`, or kept in `utils/.env`: copy `utils/.env.example`, which lists them all.
+Compose reads `utils/.env` on every run (it's git-ignored); a variable set in the shell wins over it.
+
+| Variable | Default | What it changes |
+|---|---|---|
+| `GRADLE_TASK` | `assembleDebug` | The Gradle tasks, space-separated. `assembleRelease` for a release build; `"testDebugUnitTest assembleRelease"` runs the unit tests first, as CI does |
+| `APP_ID` | `dev.alder.dockerbuilt` | The application ID. `APP_ID=` (empty) builds the official `dev.alder` |
+| `APP_NAME` | unset: "Alder" | The name on the TV's home screen and app list |
+| `HOST_UID`, `HOST_GID` | `1000`, `1000` | The user the build runs as, which owns everything in `output/` and `cache/`. Set them to `$(id -u)` / `$(id -g)` if those differ. Needs `--build` once |
+| `ANDROID_PLATFORM`, `BUILD_TOOLS_VERSION`, `CMDLINE_TOOLS_VERSION` | `android-36`, `36.0.0`, `13114758` | The SDK in the image, for when the Android Gradle plugin asks for other versions. Needs `--build` once |
+| `SIGNING_STORE_PASSWORD`, `SIGNING_KEY_ALIAS`, `SIGNING_KEY_PASSWORD`, `SIGNING_KEYSTORE` | none, `alder`, the store password, `/utils/keys/release.jks` | The release key: see [Signing](#signing-with-your-own-key-optional) |
+
+"Needs `--build` once": they change the image, so add `--build` to the next `run` (`... run --rm --build apk`).
+
+### `APP_ID`
+
+The default makes Docker builds install **beside** the official app instead of replacing it: no uninstall, no key
+clash, separate data (profiles and the Stremio sign-in are set up again). Both show as "Alder" on the TV unless
+`APP_NAME` is set.
+
+Changing the ID makes a different app to Android: data doesn't carry over, and the old one stays until uninstalled.
+
+The in-app updater downloads the official release, whose ID (`dev.alder`) and key differ: on a Docker build it can
+offer an update that then fails to install. Update by building and installing again instead.
+
+### `APP_NAME`
+
+Used in every language. Any characters work (quotes, `&`, …): the build escapes them. Only the name changes: the
+banner picture on the TV home screen still shows the Alder logo. The launcher may keep showing the old name for a
+moment after an update.
 
 ## Signing with your own key (optional)
 
@@ -57,7 +87,7 @@ the certificate). The keystore is PKCS12, so the key's password is the same as t
 
 ### 2. Give the build its password
 
-`utils/keys/signing.env`:
+In `utils/.env` (copied from `utils/.env.example`):
 
 ```bash
 SIGNING_STORE_PASSWORD=the-password-you-chose
@@ -68,7 +98,7 @@ SIGNING_STORE_PASSWORD=the-password-you-chose
 ```
 
 ```bash
-chmod 600 utils/keys/signing.env utils/keys/release.jks
+chmod 600 utils/.env utils/keys/release.jks
 ```
 
 ### 3. Build
@@ -84,8 +114,8 @@ To check the signature: `docker compose -f utils/docker-compose.yaml run --rm --
 - **Back up `release.jks` and its password somewhere outside this machine.** Android only installs an update over
   an app signed with the same key. Lose it, and every device must uninstall the app (losing its data, including the
   Stremio sign-in) before a newer build installs.
-- An APK signed with your key can't update one signed with another key: the debug key, or the official Alder
-  releases' key. Switching means uninstalling first, once.
+- An APK signed with your key can't update one with the same application ID signed with another key (e.g. the
+  debug key). Switching means uninstalling first, once.
 - `utils/keys/` is git-ignored. Don't move the key into the repository.
 
 ## Installing on an Android TV
@@ -100,4 +130,4 @@ To check the signature: `docker compose -f utils/docker-compose.yaml run --rm --
    ```
 
    `-r` keeps the app's data. `INSTALL_FAILED_UPDATE_INCOMPATIBLE` means the installed copy has another key:
-   `adb uninstall dev.alder` first (this clears its data).
+   `adb uninstall dev.alder.dockerbuilt` (or the `APP_ID` used) first, which clears its data.

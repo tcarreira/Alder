@@ -6,6 +6,10 @@ services:
       args:
         UID: ${HOST_UID:-1000}
         GID: ${HOST_GID:-1000}
+        # The SDK in the image; changing any of these needs --build once.
+        ANDROID_PLATFORM: ${ANDROID_PLATFORM:-android-36}
+        BUILD_TOOLS_VERSION: ${BUILD_TOOLS_VERSION:-36.0.0}
+        CMDLINE_TOOLS_VERSION: ${CMDLINE_TOOLS_VERSION:-13114758}
     image: alder-apk-builder
     volumes:
       - ..:/src:ro    # the repository, read-only
@@ -15,11 +19,17 @@ services:
       #   cache/gradle/  Gradle itself and the dependencies
       #   cache/build/   build output and Gradle's per-project state, so later builds are incremental
       #   cache/android/ the debug signing key, so each debug APK installs over the last
-      # and reads keys/ (optional): the release signing key.
+      # and reads keys/release.jks (optional): the release signing key.
       - .:/utils
     environment:
       GRADLE_TASK: ${GRADLE_TASK:-assembleDebug}
-    # Optional: the release key's passwords and alias (README.md). Without it, release builds use the debug key.
-    env_file:
-      - path: keys/signing.env
-        required: false
+      # Installs beside the official app (dev.alder) rather than over it. APP_ID= (empty) keeps dev.alder.
+      APP_ID: ${APP_ID-dev.alder.dockerbuilt}
+      # The name on the TV's home screen and app list. Unset: Alder, as in strings.xml.
+      APP_NAME: ${APP_NAME:-}
+      # The release key (README.md): used when keys/release.jks exists; without it, release builds use the debug key.
+      # Empty alias, key password or keystore fall back to build.sh's defaults.
+      SIGNING_STORE_PASSWORD: ${SIGNING_STORE_PASSWORD:-}
+      SIGNING_KEY_ALIAS: ${SIGNING_KEY_ALIAS:-}
+      SIGNING_KEY_PASSWORD: ${SIGNING_KEY_PASSWORD:-}
+      SIGNING_KEYSTORE: ${SIGNING_KEYSTORE:-}

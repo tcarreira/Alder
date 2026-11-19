@@ -21,3 +21,4 @@ replay_pid*.log
 /utils/output/
 /utils/cache/
 /utils/keys/
+/utils/.env
