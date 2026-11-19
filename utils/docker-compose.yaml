@@ -1,0 +1,25 @@
+# Builds Alder's APK into ./output (utils/output). Usage, release builds and signing: README.md.
+services:
+  apk:
+    build:
+      context: .
+      args:
+        UID: ${HOST_UID:-1000}
+        GID: ${HOST_GID:-1000}
+    image: alder-apk-builder
+    volumes:
+      - ..:/src:ro    # the repository, read-only
+      # utils itself rather than output/ and cache/: Docker would create those as root if missing, and the build
+      # user couldn't write to them. Inside it, the build makes:
+      #   output/        the APKs
+      #   cache/gradle/  Gradle itself and the dependencies
+      #   cache/build/   build output and Gradle's per-project state, so later builds are incremental
+      #   cache/android/ the debug signing key, so each debug APK installs over the last
+      # and reads keys/ (optional): the release signing key.
+      - .:/utils
+    environment:
+      GRADLE_TASK: ${GRADLE_TASK:-assembleDebug}
+    # Optional: the release key's passwords and alias (README.md). Without it, release builds use the debug key.
+    env_file:
+      - path: keys/signing.env
+        required: false
