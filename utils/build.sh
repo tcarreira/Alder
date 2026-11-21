@@ -57,6 +57,17 @@ if [ -n "${APP_NAME:-}" ]; then
     echo "App name: $APP_NAME"
 fi
 
+# Overrides (images, banners, etc...)
+ORIGINALS_DIR="$(mktemp -d)"; overridden=() ; originals=()
+override() { printf "overriding %s\n" "$2" ; local copy="$ORIGINALS_DIR/${#overridden[@]}" ; overridden+=("$2") ; originals+=("$copy") ; cp -p "$2" "$copy" ; cp "$1" "$2" ; }
+restore_originals() { for ((i = ${#overridden[@]} - 1; i >= 0; i--)); do cp -p "${originals[i]}" "${overridden[i]}"; done ; rm -rf "$ORIGINALS_DIR" ; }
+trap restore_originals EXIT
+
+override /utils/custom/banner.png /src/branding/house-lights/alder_tv_banner_1280x720.png
+override /utils/custom/banner.webp /src/app/src/main/res/drawable-nodpi/banner.webp
+
+
+# Build
 cd /src
 sh ./gradlew --no-daemon \
     --init-script /usr/local/share/docker.init.gradle.kts \
