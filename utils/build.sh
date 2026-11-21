@@ -46,9 +46,10 @@ name_res="$CACHE/app-name/res"
 rm -rf "$CACHE/app-name"
 if [ -n "${APP_NAME:-}" ]; then
     # Android string resources: XML escapes, then backslash, quotes, and a leading @ or ? escaped with a backslash.
-    name="${APP_NAME//&/\&amp;}"; name="${name//</\&lt;}"; name="${name//>/\&gt;}"
-    name="${name//\\/\\\\}"; name="${name//\'/\\\'}"; name="${name//\"/\\\"}"
-    [[ "$name" == [@?]* ]] && name="\\$name"
+    name=$(printf '%s' "$APP_NAME" | sed \
+        -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' \
+        -e 's/\\/\\\\/g' -e "s/'/\\\\'/g" -e 's/"/\\"/g' \
+        -e 's/^[@?]/\\&/')
     mkdir -p "$name_res/values"
     printf '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <string name="app_name" translatable="false">%s</string>\n</resources>\n' \
         "$name" > "$name_res/values/strings.xml"
